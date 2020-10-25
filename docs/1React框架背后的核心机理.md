@@ -221,6 +221,492 @@ module.exports = {
 
 pragma 里写的值会直接展示在编译后结果，至此环境搭建完成
 
+## JSX
+
+先给 div 加上 id 和 class 属性，看看编译后结果
+
+```js
+for (const i of [1, 2, 3]) {
+  console.log(i)
+}
+
+let a = <div id="a" class="c" />
+```
+
+![](https://gw.alicdn.com/tfs/TB1H4btk9slXu8jSZFuXXXg7FXa-1360-458.png)
+
+增加子节点
+
+```js
+for (const i of [1, 2, 3]) {
+  console.log(i)
+}
+
+let a = <div id="a" class="c" >
+  <div></div>
+</div>
+```
+
+![](https://gw.alicdn.com/tfs/TB17.EWk5DsXe8jSZR0XXXK6FXa-926-350.png)
+
+再增加几个子节点
+
+```diff
+  for (const i of [1, 2, 3]) {
+    console.log(i)
+  }
+
+  let a = <div id="a" class="c" >
++   <div></div>
++   <div></div>
++   <div></div>
+  </div>
+```
+
+编译后
+
+```js
+for (var _i = 0, _arr = [1, 2, 3]; _i < _arr.length; _i++) {
+  var i = _arr[_i];
+  console.log(i);
+}
+
+var a = createElement("div", {
+  id: "a",
+  "class": "c"
+}, createElement("div", null), createElement("div", null), createElement("div", null));
+```
+
+可以看到 createElement 接受三个参数
+
+- 节点标签
+- 属性
+- 子节点
+
+接下来我们来实现 `createElement` 方法
+
+```js
+for (const i of [1, 2, 3]) {
+  console.log(i)
+}
+
+const createElement = (tagName, attributes, ...children) => {
+  const e = document.createElement(tagName)
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  children.forEach((item) => {
+    e.appendChild(item)
+  })
+  return e
+}
+
+window.a = (
+  <div id="a" class="c">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+)
+```
+
+将属性和子节点分别遍历并赋给节点标签，得到如下的结构
+
+![](https://gw.alicdn.com/tfs/TB12NEvpk9l0K4jSZFKXXXFjpXa-968-488.png)
+
+接着考虑处理文本节点
+
+```diff
+const createElement = (tagName, attributes, ...children) => {
+  const e = document.createElement(tagName)
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  if (children && children.length > 0) {
+    children.forEach((item) => {
++     if (typeof item === 'string') {
++       item = document.createTextNode(item)
++     }
+      e.appendChild(item)
+    })
+  }
+  return e
+}
+
+window.a = (
+  <div id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </div>
+)
+```
+
+![](https://gw.alicdn.com/tfs/TB12WMAZFT7gK0jSZFpXXaTkpXa-696-486.png)
+
+可以看到 Text 节点也正常获取了。并可以直接渲染到 body 标签里
+
+```diff
+...
++ document.body.appendChild(
+    <div id="a" class="c">
+      <div>Joe</div>
+      <div></div>
+      <div></div>
+    </div>
+  )
+...
+```
+
+![](https://gw.alicdn.com/tfs/TB1xjUAZGL7gK0jSZFBXXXZZpXa-1358-500.png)
+
+## JSX 中的自定义组件
+
+react 中，tag 小写时是被认为原生 html tag，若首字母大写，则被认为是自定义标签。
+
+```js
+document.body.appendChild(
+  <MyComponent id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </MyComponent>
+)
+```
+
+被编译为
+
+```js
+document.body.appendChild(createElement(MyComponent, {
+  id: "a",
+  "class": "c"
+}, createElement("div", null, "Joe"), createElement("div", null), createElement("div", null)));
+```
+
+可以设定这里的 MyComponent 为一个 class 或 function，本文为了方便，先用 class 示例。重新组织一个文件结构，创建 toy-react.js 文件
+
+toy-react.js
+
+```js
+export const createElement = (type, attributes, ...children) => {
+  let e
+  if (typeof type === 'string') {
+    e = document.createElement(type)
+  } else {
+    e = new type()
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  if (children && children.length > 0) {
+    children.forEach((item) => {
+      if (typeof item === 'string') {
+        item = document.createTextNode(item)
+      }
+      e.appendChild(item)
+    })
+  }
+  return e
+}
+```
+
+main.js 更新为
+
+```js
+import { createElement } from './toy-react'
+
+class MyComponent {
+}
+
+document.body.appendChild(
+  <MyComponent id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </MyComponent>
+)
+```
+
+接下来在 toy-react 中封装 wrapper 和 render 函数。
+
+main.js 更新为
+
+```js
+import { createElement, Component, render } from './toy-react'
+
+class MyComponent extends Component {
+  render() {
+    return <div></div>
+  }
+}
+
+render(
+  <MyComponent id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </MyComponent>,
+  document.body
+)
+```
+
+在 toy-react.js 中增加 ElementWrapper, TextWrapper, Component 类和 render 函数
+
+```js
+class ElementWrapper {
+  constructor(type) {}
+  setAttribute(name, value) {}
+  appendChild() {}
+}
+class TextWrapper {
+  constructor(content) {}
+  setAttribute(name, value) {}
+  appendChild() {}
+}
+
+class Component {
+  constructor() {}
+  setAttribute(name, value) {}
+  appendChild() {}
+}
+
+export const createElement = (type, attributes, ...children) => {
+  let e
+  if (typeof type === 'string') {
+    e = document.createElement(type)
+  } else {
+    e = new type()
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  if (children && children.length > 0) {
+    children.forEach((item) => {
+      if (typeof item === 'string') {
+        item = document.createTextNode(item)
+      }
+      e.appendChild(item)
+    })
+  }
+  return e
+}
+
+export const render = (component, parentElement) => {}
+```
+
+接下来开始实现这些类
+
+toy-react.js
+
+```js
+class ElementWrapper {
+  constructor(type) {
+    this.root = document.createElement(type)
+  }
+  setAttribute(name, value) {
+    this.root.setAttribute(name, value)
+  }
+  appendChild(component) {
+    this.root.appendChild(component.root)
+  }
+}
+class TextWrapper {
+  constructor(content) {
+    this.root = document.createTextNode(content)
+  }
+}
+
+export class Component {
+  constructor() {
+    this.props = Object.create(null)
+    this.children = []
+    this._root = null
+  }
+  setAttribute(name, value) {
+    this.props[name] = value
+  }
+  appendChild(component) {
+    this.children.push(component)
+  }
+
+  get root() {
+    if (!this._root) {
+      this._root = this.render().root
+    }
+    return this._root
+  }
+}
+
+export const createElement = (type, attributes, ...children) => {
+  let e
+  if (typeof type === 'string') {
+    e = new ElementWrapper(type)
+  } else {
+    e = new type()
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  if (children && children.length > 0) {
+    children.forEach((item) => {
+      if (typeof item === 'string') {
+        item = new TextWrapper(item)
+      }
+      e.appendChild(item)
+    })
+  }
+  return e
+}
+
+export const render = (component, parentElement) => {
+  parentElement.appendChild(component.root)
+}
+```
+
+main.js
+
+```js
+import { createElement, Component, render } from './toy-react'
+
+class MyComponent extends Component {
+  render() {
+    return <div>MyComponent</div>
+  }
+}
+
+render(
+  <MyComponent id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </MyComponent>,
+  document.body
+)
+```
+
+执行 `npx webpack`
+
+![](https://gw.alicdn.com/tfs/TB125TGjNvbeK8jSZPfXXariXXa-1714-680.png)
+
+可以看到已经成功渲染，但是没有将 MyComponent 中的 children 渲染出来，接下来解决这个问题
+
+main.js
+
+```js
+import { createElement, Component, render } from './toy-react'
+
+class MyComponent extends Component {
+  render() {
+    return (
+      <div>
+        <h1>MyComponent</h1>
+        {this.children}
+      </div>
+    )
+  }
+}
+
+render(
+  <MyComponent id="a" class="c">
+    <div>Joe</div>
+    <div></div>
+    <div></div>
+  </MyComponent>,
+  document.body
+)
+```
+
+toy-react.js
+
+```js
+class ElementWrapper {
+  constructor(type) {
+    this.root = document.createElement(type)
+  }
+  setAttribute(name, value) {
+    this.root.setAttribute(name, value)
+  }
+  appendChild(component) {
+    this.root.appendChild(component.root)
+  }
+}
+class TextWrapper {
+  constructor(content) {
+    this.root = document.createTextNode(content)
+  }
+}
+
+export class Component {
+  constructor() {
+    this.props = Object.create(null)
+    this.children = []
+    this._root = null
+  }
+  setAttribute(name, value) {
+    this.props[name] = value
+  }
+  appendChild(component) {
+    this.children.push(component)
+  }
+
+  get root() {
+    if (!this._root) {
+      this._root = this.render().root
+    }
+    return this._root
+  }
+}
+
+export const createElement = (type, attributes, ...children) => {
+  let e
+  if (typeof type === 'string') {
+    e = new ElementWrapper(type)
+  } else {
+    e = new type()
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach((item) => {
+      e.setAttribute(item[0], item[1])
+    })
+  }
+  let insertChildren = (children) => {
+    if (children && children.length > 0) {
+      children.forEach((item) => {
+        if (typeof item === 'string') {
+          item = new TextWrapper(item)
+        }
+        if(typeof item === 'object' && item instanceof Array) {
+          insertChildren(item)
+        } else {
+          e.appendChild(item)
+        }
+
+      })
+    }
+  }
+  insertChildren(children)
+  return e
+}
+
+export const render = (component, parentElement) => {
+  parentElement.appendChild(component.root)
+}
+```
+
+可以看到渲染成功
+
+![](https://gw.alicdn.com/tfs/TB1EOea0lr0gK0jSZFnXXbRRXXa-1674-608.png)
+
 ## 参考链接
 
 - 需提前安装 Node.js、npm 环境： https://nodejs.org/en/
