@@ -742,3 +742,11 @@ export const render = (component, parentElement) => {
 ```
 
 ![](https://gw.alicdn.com/tfs/TB1PErslCslXu8jSZFuXXXg7FXa-188-235.gif)
+
+
+参考链接：
+TicTacToe： https://codepen.io/gaearon/pen/gWWZgR
+今日作业：
+大家第一天的课程都看完并且作业都完成了吗？大家要跟上 winter 老师的节奏哈~
+在前面了解了 React 的基本原理后，大家对 JSX 的实现应该有所掌握了。那么今天的作业要来咯：跟上老师的课堂进度，给 toy-react 添加对应的生命周期，实现动态修改内容的功能。
+附件是课上代码截图（请到 PC 端下载）：
