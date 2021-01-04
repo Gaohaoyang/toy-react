@@ -1,4 +1,20 @@
 import { createElement, Component, render } from './toy-react'
+import copy from 'copy-to-clipboard'
+import ClipboardJS from 'clipboard'
+const clipboard = new ClipboardJS('.btn')
+
+clipboard.on('success', function (e) {
+  console.info('Action:', e.action)
+  console.info('Text:', e.text)
+  console.info('Trigger:', e.trigger)
+
+  e.clearSelection()
+})
+
+clipboard.on('error', function (e) {
+  console.error('Action:', e.action)
+  console.error('Trigger:', e.trigger)
+})
 
 class Square extends Component {
   render() {
@@ -62,6 +78,19 @@ class Board extends Component {
           {this.renderSquare(7)}
           {this.renderSquare(8)}
         </div>
+
+        <button
+          onClick={() => {
+            copy('你一会看我一会看云我觉得你看我时很远你看云时很近111', {
+              message: '请手动长按复制',
+              onCopy() {
+                alert('copyed')
+              },
+            })
+          }}
+        >
+          test copy Text
+        </button>
       </div>
     )
   }
